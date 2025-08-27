@@ -1,0 +1,1 @@
+FROM bitnami/kafka:latest
