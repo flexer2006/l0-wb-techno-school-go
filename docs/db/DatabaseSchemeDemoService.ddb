@@ -1,0 +1,723 @@
+{
+  "author": "Unnamed",
+  "title": "DatabaseSchemeDemoService",
+  "date": "2025-09-01T20:53:05.763Z",
+  "tables": [
+    {
+      "name": "orders",
+      "comment": "",
+      "color": "#ff4f81",
+      "fields": [
+        {
+          "name": "order_uid",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": true,
+          "default": "",
+          "check": "",
+          "id": 0
+        },
+        {
+          "name": "track_number",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 1
+        },
+        {
+          "name": "entry",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 2
+        },
+        {
+          "name": "locale",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 3
+        },
+        {
+          "name": "internal_signature",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 4
+        },
+        {
+          "name": "customer_id",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 5
+        },
+        {
+          "name": "delivery_service",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 6
+        },
+        {
+          "name": "shardkey",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 7
+        },
+        {
+          "name": "sm_id",
+          "type": "INTEGER",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 8
+        },
+        {
+          "name": "date_created",
+          "type": "TIMESTAMPTZ",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 9
+        },
+        {
+          "name": "oof_shard",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 10
+        },
+        {
+          "name": "raw",
+          "type": "JSONB",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 11
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "now()",
+          "check": "",
+          "id": 12
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMPTZ",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "now()",
+          "check": "",
+          "id": 13
+        }
+      ],
+      "indices": [
+        {
+          "name": "ux_orders_track_number",
+          "unique": true,
+          "fields": [
+            "track_number"
+          ],
+          "id": 0
+        },
+        {
+          "name": "idx_orders_date_created",
+          "unique": false,
+          "fields": [
+            "date_created"
+          ],
+          "id": 1
+        },
+        {
+          "name": "idx_orders_customer_id",
+          "unique": false,
+          "fields": [
+            "customer_id"
+          ],
+          "id": 2
+        }
+      ],
+      "id": 0,
+      "x": -912.0880349111683,
+      "y": 194.75458462086613
+    },
+    {
+      "name": "delivery",
+      "comment": "",
+      "color": "#ff4f81",
+      "fields": [
+        {
+          "name": "id",
+          "type": "SERIAL",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": true,
+          "default": "",
+          "check": "",
+          "id": 0
+        },
+        {
+          "name": "order_uid",
+          "type": "TEXT",
+          "comment": "",
+          "unique": true,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 1
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 2
+        },
+        {
+          "name": "phone",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 3
+        },
+        {
+          "name": "zip",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 4
+        },
+        {
+          "name": "city",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 5
+        },
+        {
+          "name": "address",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 6
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 7
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 8
+        }
+      ],
+      "indices": [],
+      "id": 1,
+      "x": -327.26890444320236,
+      "y": -139.17840894551864
+    },
+    {
+      "name": "payment",
+      "comment": "",
+      "color": "#ff4f81",
+      "fields": [
+        {
+          "name": "id",
+          "type": "SERIAL",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": true,
+          "default": "",
+          "check": "",
+          "id": 0
+        },
+        {
+          "name": "order_uid",
+          "type": "TEXT",
+          "comment": "",
+          "unique": true,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 1
+        },
+        {
+          "name": "transaction_id",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 2
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 3
+        },
+        {
+          "name": "currency",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 4
+        },
+        {
+          "name": "provider",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 5
+        },
+        {
+          "name": "amount",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 6
+        },
+        {
+          "name": "payment_dt",
+          "type": "BIGINT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 7
+        },
+        {
+          "name": "bank",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 8
+        },
+        {
+          "name": "delivery_cost",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 9
+        },
+        {
+          "name": "goods_total",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 10
+        },
+        {
+          "name": "custom_fee",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 11
+        }
+      ],
+      "indices": [],
+      "id": 2,
+      "x": 210.26632239335345,
+      "y": 163.7338743542096
+    },
+    {
+      "name": "items",
+      "comment": "",
+      "color": "#ff4f81",
+      "fields": [
+        {
+          "name": "id",
+          "type": "SERIAL",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": true,
+          "default": "",
+          "check": "",
+          "id": 0
+        },
+        {
+          "name": "order_uid",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": true,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 1
+        },
+        {
+          "name": "chrt_id",
+          "type": "BIGINT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 2
+        },
+        {
+          "name": "track_number",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 3
+        },
+        {
+          "name": "price",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 4
+        },
+        {
+          "name": "rid",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 5
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 6
+        },
+        {
+          "name": "sale",
+          "type": "INTEGER",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 7
+        },
+        {
+          "name": "size",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 8
+        },
+        {
+          "name": "total_price",
+          "type": "NUMERIC",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "size": "14,2",
+          "check": "",
+          "id": 9
+        },
+        {
+          "name": "nm_id",
+          "type": "BIGINT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 10
+        },
+        {
+          "name": "brand",
+          "type": "TEXT",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 11
+        },
+        {
+          "name": "status",
+          "type": "INTEGER",
+          "comment": "",
+          "unique": false,
+          "increment": false,
+          "notNull": false,
+          "primary": false,
+          "default": "",
+          "check": "",
+          "id": 12
+        }
+      ],
+      "indices": [
+        {
+          "name": "idx_items_order_uid",
+          "unique": false,
+          "fields": [
+            "order_uid"
+          ],
+          "id": 0
+        },
+        {
+          "name": "idx_items_nm_id",
+          "unique": false,
+          "fields": [
+            "nm_id"
+          ],
+          "id": 1
+        },
+        {
+          "name": "idx_items_chrt_id",
+          "unique": false,
+          "fields": [
+            "chrt_id"
+          ],
+          "id": 2
+        }
+      ],
+      "id": 3,
+      "x": -224.4752572393353,
+      "y": 488.26066553906344
+    }
+  ],
+  "relationships": [
+    {
+      "name": "delivery_order_uid_fk",
+      "startTableId": 1,
+      "startFieldId": 1,
+      "endTableId": 0,
+      "endFieldId": 0,
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_one",
+      "id": 0
+    },
+    {
+      "name": "payment_order_uid_fk",
+      "startTableId": 2,
+      "startFieldId": 1,
+      "endTableId": 0,
+      "endFieldId": 0,
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_one",
+      "id": 1
+    },
+    {
+      "name": "items_order_uid_fk",
+      "startTableId": 3,
+      "startFieldId": 1,
+      "endTableId": 0,
+      "endFieldId": 0,
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade",
+      "cardinality": "many_to_one",
+      "id": 2
+    }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "database": "postgresql",
+  "types": [],
+  "enums": []
+}
