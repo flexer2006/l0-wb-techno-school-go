@@ -1,0 +1,41 @@
+version: "2"
+
+run:
+  tests: true
+  timeout: 5m
+  skip-dirs:
+    - vendor
+    - migrations
+    - docs
+    - containers
+    - .idea
+    - .vscode
+    - .github
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - sqlclosecheck
+    - errorlint
+    - gosec
+    - wrapcheck
+    - noctx
+    - err113
+    - misspell
+    - whitespace
+    - gocritic
+    - wastedassign
+    - dupl
+    - nestif
+    - godot
+    - varnamelen
+    - testifylint
+    - thelper
+    - contextcheck
+    - bidichk
+    - canonicalheader
