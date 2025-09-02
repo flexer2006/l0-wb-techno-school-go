@@ -40,3 +40,6 @@ logger:
     caller_key: "caller"
     time_encoder: "iso8601"
     level_encoder: "lower"
+
+shutdown:
+  timeout: "5s"
