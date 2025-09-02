@@ -3,6 +3,7 @@ module github.com/flexer2006/l0-wb-techno-school-go
 go 1.25.0
 
 require (
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0
 )
