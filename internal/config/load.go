@@ -12,7 +12,11 @@ import (
 
 func Load() (*Config, error) {
 	if err := godotenv.Load("deploy/.env"); err != nil {
-		if !os.IsNotExist(err) {
+		switch {
+		case os.IsNotExist(err):
+		case os.IsPermission(err):
+			fmt.Fprintf(os.Stderr, "warning: cannot read deploy/.env (permission denied), continuing: %v\n", err)
+		default:
 			return nil, fmt.Errorf("failed to load .env file: %w", err)
 		}
 	}

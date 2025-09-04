@@ -41,12 +41,9 @@ func RunService() error {
 
 	zapLogger.Info("database initialized successfully")
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Shutdown.Timeout)
-	defer shutdownCancel()
-
 	gracefulShutdown := NewGracefulShutdown(cfg.Shutdown, zapLogger)
 
-	go gracefulShutdown(shutdownCtx, func(hookCtx context.Context) error {
+	go gracefulShutdown(ctx, func(hookCtx context.Context) error {
 		zapLogger.Info("closing database connection")
 		database.Close()
 		return nil
@@ -63,14 +60,27 @@ func RunService() error {
 
 	cancel()
 
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Shutdown.Timeout)
+	defer shutdownCancel()
+
+	doneCh := make(chan struct{})
+	go func() {
+		gracefulShutdown(shutdownCtx, func(hookCtx context.Context) error {
+			zapLogger.Info("closing database connection")
+			database.Close()
+			return nil
+		})
+		close(doneCh)
+	}()
+
 	select {
+	case <-doneCh:
+		zapLogger.Info("shutdown completed successfully")
 	case <-shutdownCtx.Done():
 		if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
 			zapLogger.Error("shutdown timeout exceeded")
 			return fmt.Errorf("%w after %v: %w", ErrShutdownTimeout, cfg.Shutdown.Timeout, shutdownCtx.Err())
 		}
-		zapLogger.Info("shutdown completed successfully")
-
 	case <-sigCh:
 		zapLogger.Warn("second interrupt received, forcing immediate exit")
 		return ErrForcedShutdown
