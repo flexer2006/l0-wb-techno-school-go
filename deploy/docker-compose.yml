@@ -85,10 +85,54 @@ services:
     volumes:
       - ${KAFKA_LOG_VOLUME:-kafka_logs}:/var/lib/kafka/data
 
+  server:
+    build:
+      context: ..
+      dockerfile: containers/docker/go.Dockerfile
+    image: l0-wb-techno-school-go-server:latest
+    container_name: l0-wb-techno-school-go-server
+    env_file:
+      - ./.env
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE}
+      - POSTGRES_MIN_CONN=${POSTGRES_MIN_CONN}
+      - POSTGRES_MAX_CONN=${POSTGRES_MAX_CONN}
+      - SERVER_HOST=${SERVER_HOST}
+      - SERVER_PORT=${SERVER_PORT}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    expose:
+      - "${SERVER_PORT}"
+    networks:
+      - internal
+      - external
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -f http://127.0.0.1:${SERVER_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - ${SERVER_LOG_VOLUME:-server_logs}:/var/log/server
+
 networks:
   internal:
     driver: bridge
     internal: true
+  external:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -98,4 +142,6 @@ volumes:
   zookeeper_log:
     driver: local
   kafka_logs:
+    driver: local
+  server_logs:
     driver: local
