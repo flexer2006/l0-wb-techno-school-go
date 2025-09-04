@@ -14,6 +14,7 @@ func Load() (*Config, error) {
 	if err := godotenv.Load("deploy/.env"); err != nil {
 		switch {
 		case os.IsNotExist(err):
+			fmt.Fprintf(os.Stderr, "info: deploy/.env not found, continuing: %v\n", err)
 		case os.IsPermission(err):
 			fmt.Fprintf(os.Stderr, "warning: cannot read deploy/.env (permission denied), continuing: %v\n", err)
 		default:
