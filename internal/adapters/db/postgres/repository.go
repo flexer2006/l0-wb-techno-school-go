@@ -105,6 +105,12 @@ const (
         FROM orders 
         ORDER BY created_at DESC 
         LIMIT $1`
+
+	insertItemsBaseSQL = `
+        INSERT INTO items (
+            order_uid, chrt_id, track_number, price, rid, name, sale, 
+            size, total_price, nm_id, brand, status
+        ) VALUES %s`
 )
 
 type Queryable interface {
@@ -134,11 +140,8 @@ func validateOrder(order *domain.Order) error {
 		return fmt.Errorf("%w: missing date_created", ErrInvalidOrder)
 	}
 	for _, item := range order.Items {
-		if item.ChrtID == 0 || item.Name == "" {
-			return fmt.Errorf("%w: invalid item data (chrt_id or name)", ErrInvalidOrder)
-		}
-		if item.Price < 0 || item.TotalPrice < 0 {
-			return fmt.Errorf("%w: invalid item data (price or total_price)", ErrInvalidOrder)
+		if item.ChrtID == 0 || item.Name == "" || item.Price < 0 || item.TotalPrice < 0 {
+			return fmt.Errorf("%w: invalid item data", ErrInvalidOrder)
 		}
 	}
 	return nil
@@ -245,10 +248,10 @@ func (r *orderRepository) insertItemsBatch(ctx context.Context, transaction Quer
 		}
 	}
 
-	if _, err := transaction.CopyFrom(ctx, pgx.Identifier{"items"}, columns, pgx.CopyFromRows(rows)); err == nil {
-		return nil
-	} else {
+	if _, err := transaction.CopyFrom(ctx, pgx.Identifier{"items"}, columns, pgx.CopyFromRows(rows)); err != nil {
 		r.log.Debug("CopyFrom failed, using fallback INSERT", "order_uid", orderUID, "error", err)
+	} else {
+		return nil
 	}
 
 	batchSQL, valueArgs := r.buildBatchInsertSQL(orderUID, items)
@@ -261,11 +264,14 @@ func (r *orderRepository) insertItemsBatch(ctx context.Context, transaction Quer
 }
 
 func (r *orderRepository) buildBatchInsertSQL(orderUID string, items []domain.Item) (string, []any) {
-	valueStrings := make([]string, 0, len(items))
+	var valueStrings strings.Builder
 	valueArgs := make([]any, 0, len(items)*12)
 
 	for i, item := range items {
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+		if i > 0 {
+			valueStrings.WriteString(", ")
+		}
+		valueStrings.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
 			i*12+1, i*12+2, i*12+3, i*12+4, i*12+5, i*12+6, i*12+7, i*12+8, i*12+9, i*12+10, i*12+11, i*12+12))
 
 		valueArgs = append(valueArgs,
@@ -275,11 +281,7 @@ func (r *orderRepository) buildBatchInsertSQL(orderUID string, items []domain.It
 		)
 	}
 
-	batchSQL := fmt.Sprintf(`
-        INSERT INTO items (
-            order_uid, chrt_id, track_number, price, rid, name, sale, 
-            size, total_price, nm_id, brand, status
-        ) VALUES %s`, strings.Join(valueStrings, ","))
+	batchSQL := fmt.Sprintf(insertItemsBaseSQL, valueStrings.String())
 
 	return batchSQL, valueArgs
 }
