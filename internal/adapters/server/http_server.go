@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/gofiber/fiber/v3"
@@ -14,6 +13,12 @@ import (
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
 )
 
+const (
+	ReadBufferSize  = 8192
+	WriteBufferSize = 8192
+	Concurrency     = 512 * 1024
+)
+
 type httpServer struct {
 	app *fiber.App
 	log logger.Logger
@@ -21,11 +26,23 @@ type httpServer struct {
 }
 
 func NewHTTPServer(log logger.Logger, cfg config.ServerConfig) ports.HTTPServer {
-	app := fiber.New()
+	fiberCfg := fiber.Config{
+		ReadTimeout:     cfg.ReadTimeout,
+		WriteTimeout:    cfg.Timeout,
+		IdleTimeout:     cfg.IdleTimeout,
+		ReadBufferSize:  ReadBufferSize,
+		WriteBufferSize: WriteBufferSize,
+		Concurrency:     Concurrency,
+	}
+
+	app := fiber.New(fiberCfg)
 
 	app.Use(LoggingMiddleware(log))
 
-	app.Use("/static", static.New("./static"))
+	staticCfg := static.Config{
+		CacheDuration: 60 * cfg.Timeout,
+	}
+	app.Use("/static", static.New("./static", staticCfg))
 
 	return &httpServer{
 		app: app,
@@ -35,7 +52,7 @@ func NewHTTPServer(log logger.Logger, cfg config.ServerConfig) ports.HTTPServer 
 }
 
 func (s *httpServer) Start(ctx context.Context) error {
-	addr := net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port))
+	addr := net.JoinHostPort(s.cfg.Host, fmt.Sprintf("%d", s.cfg.Port))
 	s.log.Info("starting HTTP server", "addr", addr)
 
 	go func() {
@@ -46,6 +63,7 @@ func (s *httpServer) Start(ctx context.Context) error {
 
 	<-ctx.Done()
 	s.log.Info("shutting down HTTP server")
+
 	return fmt.Errorf("shutdown: %w", s.app.Shutdown())
 }
 
@@ -53,6 +71,7 @@ func (s *httpServer) Stop(ctx context.Context) error {
 	s.log.Info("stopping HTTP server")
 	shutdownCtx, cancel := context.WithTimeout(ctx, s.cfg.ShutdownTimeout)
 	defer cancel()
+
 	return fmt.Errorf("shutdown with context: %w", s.app.ShutdownWithContext(shutdownCtx))
 }
 

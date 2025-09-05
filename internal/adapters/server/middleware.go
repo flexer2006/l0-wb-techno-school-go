@@ -14,13 +14,16 @@ func LoggingMiddleware(log logger.Logger) fiber.Handler {
 		err := ctx.Next()
 		duration := time.Since(start)
 
-		log.Info("HTTP request",
-			"method", ctx.Method(),
-			"path", ctx.Path(),
-			"status", ctx.Response().StatusCode(),
-			"duration_ms", duration.Milliseconds(),
-			"ip", ctx.IP(),
-		)
+		if err != nil || ctx.Response().StatusCode() >= 400 {
+			log.Info("HTTP request",
+				"method", ctx.Method(),
+				"path", ctx.Path(),
+				"status", ctx.Response().StatusCode(),
+				"duration_ms", duration.Milliseconds(),
+				"ip", ctx.IP(),
+			)
+		}
+
 		if err != nil {
 			return fmt.Errorf("middleware next: %w", err)
 		}
