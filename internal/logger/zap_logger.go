@@ -56,41 +56,21 @@ func ParseLevelEncoder(enc string) zapcore.LevelEncoder {
 	return zapcore.CapitalLevelEncoder
 }
 
-func (z *ZapLogger) Debug(msg string, fields ...any) {
-	z.Sugared.Debugw(msg, fields...)
-}
-
-func (z *ZapLogger) Info(msg string, fields ...any) {
-	z.Sugared.Infow(msg, fields...)
-}
-
-func (z *ZapLogger) Warn(msg string, fields ...any) {
-	z.Sugared.Warnw(msg, fields...)
-}
-
-func (z *ZapLogger) Error(msg string, fields ...any) {
-	z.Sugared.Errorw(msg, fields...)
-}
-
-func (z *ZapLogger) Fatal(msg string, fields ...any) {
-	z.Sugared.Fatalw(msg, fields...)
-}
+func (z *ZapLogger) Debug(msg string, fields ...any) { z.Sugared.Debugw(msg, fields...) }
+func (z *ZapLogger) Info(msg string, fields ...any)  { z.Sugared.Infow(msg, fields...) }
+func (z *ZapLogger) Warn(msg string, fields ...any)  { z.Sugared.Warnw(msg, fields...) }
+func (z *ZapLogger) Error(msg string, fields ...any) { z.Sugared.Errorw(msg, fields...) }
+func (z *ZapLogger) Fatal(msg string, fields ...any) { z.Sugared.Fatalw(msg, fields...) }
 
 func (z *ZapLogger) WithField(key string, value any) Logger {
 	newLogger := z.Logger.With(zap.Any(key, value))
-	return &ZapLogger{
-		Logger:  newLogger,
-		Sugared: newLogger.Sugar(),
-	}
+	return &ZapLogger{Logger: newLogger, Sugared: newLogger.Sugar()}
 }
 
 func (z *ZapLogger) WithContext(ctx context.Context) Logger {
 	if traceID, ok := ctx.Value(TraceIDKey).(string); ok {
 		newLogger := z.Logger.With(zap.String(TraceIDKey, traceID))
-		return &ZapLogger{
-			Logger:  newLogger,
-			Sugared: newLogger.Sugar(),
-		}
+		return &ZapLogger{Logger: newLogger, Sugared: newLogger.Sugar()}
 	}
 	return z
 }
@@ -112,11 +92,6 @@ func NewZapLoggerFromConfig(cfg config.LoggerConfig) Logger {
 		OutputPaths:      cfg.OutputPaths,
 		ErrorOutputPaths: cfg.ErrorPaths,
 	}
-
 	zapLogger := zap.Must(zapConfig.Build())
-
-	return &ZapLogger{
-		Logger:  zapLogger,
-		Sugared: zapLogger.Sugar(),
-	}
+	return &ZapLogger{Logger: zapLogger, Sugared: zapLogger.Sugar()}
 }
