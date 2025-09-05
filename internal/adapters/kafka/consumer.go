@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
 	"github.com/segmentio/kafka-go"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
-	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
 )
 
 var (
@@ -40,13 +39,12 @@ func NewKafkaConsumer(reader *kafka.Reader, service ports.OrderService, log logg
 }
 
 func NewKafkaConsumerWithConfig(cfg config.KafkaConfig, service ports.OrderService, log logger.Logger) ports.KafkaConsumer {
-	var startOffset int64
-	switch cfg.AutoOffsetReset {
-	case "earliest":
-		startOffset = kafka.FirstOffset
-	case "latest":
-		startOffset = kafka.LastOffset
-	default:
+	offsetMap := map[string]int64{
+		"earliest": kafka.FirstOffset,
+		"latest":   kafka.LastOffset,
+	}
+	startOffset, exists := offsetMap[cfg.AutoOffsetReset]
+	if !exists {
 		startOffset = kafka.LastOffset
 	}
 
@@ -73,49 +71,43 @@ func (c *kafkaConsumer) Start(ctx context.Context) error {
 		return ErrConsumerAlreadyStarted
 	}
 	c.started = true
-
 	consumerCtx, cancel := context.WithCancel(ctx)
 	c.cancel = cancel
 	c.mu.Unlock()
 
+	c.g.SetLimit(1)
+
 	c.g.Go(func() error {
 		defer func() {
 			if r := recover(); r != nil {
-				c.log.Error("panic in consumer goroutine", "panic", r)
+				c.log.Error("panic in consumer goroutine", "panic", fmt.Sprintf("%v", r))
 			}
 		}()
 
 		c.log.Info("starting kafka consumer", "topic", c.reader.Config().Topic, "group_id", c.reader.Config().GroupID)
 
 		for {
-			select {
-			case <-consumerCtx.Done():
-				c.log.Info("stopping kafka consumer due to context cancellation")
-				return nil
-			default:
-				msg, err := c.reader.ReadMessage(consumerCtx)
-				if err != nil {
-					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-						c.log.Info("consumer stopped due to context", "error", err)
-						return nil
-					}
-					c.log.Error("failed to read message from kafka", "error", err)
-					continue
+			msg, err := c.reader.ReadMessage(consumerCtx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					c.log.Info("consumer stopped due to context", "error", err)
+					return nil
 				}
+				c.log.Error("failed to read message from kafka", "error", err)
+				continue
+			}
 
-				keyHex := fmt.Sprintf("%x", msg.Key)
-				c.log.Debug("received message from kafka", "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset, "key", keyHex)
+			c.log.Debug("received message from kafka", "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset, "key", msg.Key)
 
-				if err := c.service.ProcessMessage(consumerCtx, msg.Value); err != nil {
-					c.log.Error("failed to process message", "offset", msg.Offset, "error", err)
-					continue
-				}
+			if err := c.service.ProcessMessage(consumerCtx, msg.Value); err != nil {
+				c.log.Error("failed to process message", "offset", msg.Offset, "error", err)
+				continue
+			}
 
-				if err := c.reader.CommitMessages(consumerCtx, msg); err != nil {
-					c.log.Error("failed to commit message", "offset", msg.Offset, "error", err)
-				} else {
-					c.log.Debug("message committed", "offset", msg.Offset)
-				}
+			if err := c.reader.CommitMessages(consumerCtx, msg); err != nil {
+				c.log.Error("failed to commit message", "offset", msg.Offset, "error", err)
+			} else {
+				c.log.Debug("message committed", "offset", msg.Offset)
 			}
 		}
 	})
@@ -130,7 +122,6 @@ func (c *kafkaConsumer) Stop(ctx context.Context) error {
 		return ErrConsumerNotStarted
 	}
 	c.started = false
-
 	if c.cancel != nil {
 		c.cancel()
 	}
