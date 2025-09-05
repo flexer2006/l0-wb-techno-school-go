@@ -37,18 +37,16 @@ func Wait(ctx context.Context, timeout time.Duration, log logger.Logger, hooks .
 	errCh := make(chan error, len(hooks))
 
 	for _, hook := range hooks {
-		waitGroup.Add(1)
-		go func(shutdownFunc func(context.Context) error) {
-			defer waitGroup.Done()
+		waitGroup.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					log.Error("panic in shutdown hook", "panic", r)
 				}
 			}()
-			if err := shutdownFunc(shutdownCtx); err != nil {
+			if err := hook(shutdownCtx); err != nil {
 				errCh <- err
 			}
-		}(hook)
+		})
 	}
 
 	done := make(chan struct{})
