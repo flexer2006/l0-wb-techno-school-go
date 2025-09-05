@@ -118,11 +118,6 @@ func NewPoolWithMigrations(ctx context.Context, cfg config.DatabaseConfig, log l
 
 	log.Info("database connection established successfully")
 
-	if err := database.Ping(ctx); err != nil {
-		database.Close()
-		return nil, fmt.Errorf("ping database: %w", err)
-	}
-
 	if err := runMigrations(dsn, cfg.MigrationsPath, log); err != nil {
 		database.Close()
 		return nil, fmt.Errorf("run migrations: %w", err)

@@ -63,14 +63,14 @@ func (mr *MigrationRunner) Version() (uint, bool, error) {
 func (mr *MigrationRunner) Close() error {
 	sourceErr, databaseErr := mr.migrator.Close()
 
-	switch {
-	case sourceErr != nil && databaseErr != nil:
+	if sourceErr != nil && databaseErr != nil {
 		return fmt.Errorf("%w: source error: %w, database error: %w", ErrMigrationClose, sourceErr, databaseErr)
-	case sourceErr != nil:
-		return fmt.Errorf("%w: source error: %w", ErrMigrationClose, sourceErr)
-	case databaseErr != nil:
-		return fmt.Errorf("%w: database error: %w", ErrMigrationClose, databaseErr)
-	default:
-		return nil
 	}
+	if sourceErr != nil {
+		return fmt.Errorf("%w: source error: %w", ErrMigrationClose, sourceErr)
+	}
+	if databaseErr != nil {
+		return fmt.Errorf("%w: database error: %w", ErrMigrationClose, databaseErr)
+	}
+	return nil
 }
