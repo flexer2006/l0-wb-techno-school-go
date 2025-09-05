@@ -11,7 +11,7 @@ server:
   timeout: "5s"
   idle_timeout: "60s"
   read_timeout: "5s"
-  shutdown_timeout: "10s"
+  shutdown_timeout: "8s"  
 
 kafka:
   topic: "orders"
@@ -40,3 +40,6 @@ logger:
     caller_key: "caller"
     time_encoder: "iso8601"
     level_encoder: "lower"
+
+shutdown:
+  timeout: "10s"

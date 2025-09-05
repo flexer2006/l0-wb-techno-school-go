@@ -68,7 +68,7 @@ func initComponents(ctx context.Context, cfg *config.Config, log logger.Logger) 
 	if err := caches.RestoreFromDB(ctx, repo); err != nil {
 		log.Warn("failed to restore caches from DB", "error", err)
 	} else {
-		log.Info("caches restored from DB")
+		log.Info("the cache has been fully restored")
 	}
 
 	service := NewService(repo, caches, log)

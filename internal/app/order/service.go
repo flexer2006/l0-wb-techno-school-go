@@ -45,6 +45,8 @@ func (s *OrderService) ProcessMessage(ctx context.Context, payload []byte) error
 		return nil
 	}
 
+	s.log.Info("unmarshaled order", "order_uid", order.OrderUID, "sm_id", order.SmID)
+
 	if order.OrderUID == "" {
 		s.log.Warn("unmarshaled order has empty order_uid, skipping")
 		return nil
@@ -64,7 +66,16 @@ func (s *OrderService) ProcessMessage(ctx context.Context, payload []byte) error
 		return fmt.Errorf("save order to DB: %w", err)
 	}
 
-	s.cache.Set(&order)
+	orderFromDB, err := s.repo.GetOrder(ctx, order.OrderUID)
+	if err != nil {
+		s.log.Warn("failed to get order from DB after save, caching original",
+			"order_uid", order.OrderUID,
+			"error", err)
+		s.cache.Set(&order)
+	} else {
+		s.cache.Set(orderFromDB)
+	}
+
 	s.log.Info("order processed successfully",
 		"order_uid", order.OrderUID,
 		"items_count", len(order.Items))
