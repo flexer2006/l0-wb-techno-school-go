@@ -1,0 +1,9 @@
+### Healthcheck
+GET {{host}}:{{port}}/health
+
+### Get index.html
+GET {{host}}:{{port}}/static/index.html
+
+### Get order by UID
+GET {{host}}:{{port}}/order/{order_uid}
+
