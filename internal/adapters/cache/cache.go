@@ -17,14 +17,14 @@ var (
 )
 
 type inMemoryCache struct {
-	cache sync.Map
 	log   logger.Logger
+	cache sync.Map
 }
 
 func NewInMemoryCache(log logger.Logger) ports.Cache {
 	return &inMemoryCache{
-		cache: sync.Map{},
 		log:   log,
+		cache: sync.Map{},
 	}
 }
 
@@ -40,8 +40,8 @@ func (c *inMemoryCache) Get(orderUID string) (*domain.Order, bool) {
 		return nil, false
 	}
 
-	order, isOrder := val.(*domain.Order)
-	if !isOrder {
+	order, ok := val.(*domain.Order)
+	if !ok {
 		c.log.Error("invalid type in cache", "order_uid", orderUID)
 		return nil, false
 	}
@@ -52,7 +52,7 @@ func (c *inMemoryCache) Get(orderUID string) (*domain.Order, bool) {
 
 func (c *inMemoryCache) Set(order *domain.Order) {
 	if order == nil || order.OrderUID == "" || order.DateCreated.IsZero() {
-		c.log.Warn("attempt to save invalid order (nil, empty orderUID or date_created)")
+		c.log.Warn("attempt to save invalid order")
 		return
 	}
 
@@ -67,16 +67,11 @@ func (c *inMemoryCache) RestoreFromDB(ctx context.Context, repo ports.OrderRepos
 
 	const limit = 1000
 
-	c.cache.Range(func(key, value any) bool {
-		c.cache.Delete(key)
-		return true
-	})
+	c.cache.Clear()
 	c.log.Debug("cache cleared before restore")
 
-	select {
-	case <-ctx.Done():
+	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("context canceled before query: %w", ErrContextCanceled)
-	default:
 	}
 
 	orders, err := repo.ListRecent(ctx, limit)
@@ -86,11 +81,9 @@ func (c *inMemoryCache) RestoreFromDB(ctx context.Context, repo ports.OrderRepos
 	}
 
 	for _, order := range orders {
-		select {
-		case <-ctx.Done():
+		if err := ctx.Err(); err != nil {
 			c.log.Warn("context canceled during cache restore", "processed_orders", len(orders))
 			return fmt.Errorf("context canceled during restore: %w", ErrContextCanceled)
-		default:
 		}
 
 		if order != nil && order.OrderUID != "" {
@@ -98,6 +91,6 @@ func (c *inMemoryCache) RestoreFromDB(ctx context.Context, repo ports.OrderRepos
 		}
 	}
 
-	c.log.Info("cache restored from DB", "orders_count", len(orders), "limit", limit, "cleared", true)
+	c.log.Info("cache restored from DB", "orders_count", len(orders), "limit", limit)
 	return nil
 }
