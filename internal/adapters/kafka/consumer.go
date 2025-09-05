@@ -16,7 +16,6 @@ import (
 var (
 	ErrConsumerAlreadyStarted = errors.New("consumer already started")
 	ErrConsumerNotStarted     = errors.New("consumer not started")
-	ErrInvalidConfig          = errors.New("invalid kafka config")
 )
 
 type kafkaConsumer struct {
@@ -115,7 +114,7 @@ func (c *kafkaConsumer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *kafkaConsumer) Stop(ctx context.Context) error {
+func (c *kafkaConsumer) Stop(_ context.Context) error {
 	c.mu.Lock()
 	if !c.started {
 		c.mu.Unlock()

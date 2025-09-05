@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/cache"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/db/postgres"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/db/postgres/connect"
-	kafkalocal "github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/kafka"
+	consumer "github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/kafka"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/server"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/server/handlers"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/app/order"
@@ -24,14 +25,12 @@ import (
 const AppVersion = "1.0.0"
 
 var (
-	ErrShutdownTimeout    = errors.New("shutdown timeout exceeded")
 	ErrForcedShutdown     = errors.New("forced shutdown by second signal")
 	ErrApplicationStartup = errors.New("application startup failed")
 )
 
 func RunService() error {
 	cfg := config.MustLoad()
-
 	zapLogger := NewZapLogger(cfg.Logger)
 
 	zapLogger.Info("starting application",
@@ -40,101 +39,120 @@ func RunService() error {
 		"shutdown_timeout", cfg.Shutdown.Timeout,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
 
-	database, err := NewDatabase(ctx, cfg.Database, zapLogger)
+	components, err := initComponents(ctx, cfg, zapLogger)
 	if err != nil {
-		zapLogger.Error("failed to initialize database", "error", err)
-		return fmt.Errorf("%w: database initialization failed: %w", ErrApplicationStartup, err)
+		zapLogger.Error("failed to initialize components", "error", err)
+		return fmt.Errorf("%w: %w", ErrApplicationStartup, err)
 	}
 
-	zapLogger.Info("database initialized successfully")
-
-	repo := NewRepository(database, zapLogger)
-
-	cache := NewCache(zapLogger)
-
-	if err := cache.RestoreFromDB(ctx, repo); err != nil {
-		zapLogger.Warn("failed to restore cache from DB", "error", err)
-	} else {
-		zapLogger.Info("cache restored from DB")
-	}
-
-	service := NewService(repo, cache, zapLogger)
-
-	kafkaConsumer := NewKafkaConsumer(cfg.Kafka, service, zapLogger)
-
-	httpServer := NewHTTPServer(cache, repo, zapLogger, cfg.Server)
-
-	gracefulShutdown := NewGracefulShutdown(cfg.Shutdown, zapLogger)
-
-	go func() {
-		if err := kafkaConsumer.Start(ctx); err != nil {
-			zapLogger.Error("failed to start Kafka consumer", "error", err)
-		}
-	}()
-
-	go func() {
-		if err := httpServer.Start(ctx); err != nil {
-			zapLogger.Error("failed to start HTTP server", "error", err)
-		}
-	}()
+	startServices(ctx, components, zapLogger)
 
 	zapLogger.Info("application is running, press Ctrl+C to stop")
 
+	return handleShutdown(ctx, cancel, cfg, components, zapLogger)
+}
+
+func initComponents(ctx context.Context, cfg *config.Config, log logger.Logger) (*serviceComponents, error) {
+	database, err := NewDatabase(ctx, cfg.Database, log)
+	if err != nil {
+		return nil, fmt.Errorf("database: %w", err)
+	}
+	log.Info("database initialized successfully")
+
+	repo := NewRepository(database, log)
+	caches := NewCache(log)
+
+	if err := caches.RestoreFromDB(ctx, repo); err != nil {
+		log.Warn("failed to restore caches from DB", "error", err)
+	} else {
+		log.Info("caches restored from DB")
+	}
+
+	service := NewService(repo, caches, log)
+	kafkaConsumer := NewKafkaConsumer(cfg.Kafka, service, log)
+	httpServer := NewHTTPServer(caches, repo, log, cfg.Server)
+	gracefulShutdown := NewGracefulShutdown(cfg.Shutdown, log)
+
+	return &serviceComponents{
+		database:         database,
+		repo:             repo,
+		cache:            caches,
+		service:          service,
+		kafkaConsumer:    kafkaConsumer,
+		httpServer:       httpServer,
+		gracefulShutdown: gracefulShutdown,
+	}, nil
+}
+
+type serviceComponents struct {
+	database         *connect.DB
+	repo             ports.OrderRepository
+	cache            ports.Cache
+	service          *order.OrderService
+	kafkaConsumer    ports.KafkaConsumer
+	httpServer       ports.HTTPServer
+	gracefulShutdown func(context.Context, ...func(context.Context) error)
+}
+
+func startServices(ctx context.Context, comp *serviceComponents, log logger.Logger) {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(2)
+
+	waitGroup.Go(func() {
+		if err := comp.kafkaConsumer.Start(ctx); err != nil {
+			log.Error("failed to start Kafka consumer", "error", err)
+		}
+	})
+
+	waitGroup.Go(func() {
+		if err := comp.httpServer.Start(ctx); err != nil {
+			log.Error("failed to start HTTP server", "error", err)
+		}
+	})
+
+	waitGroup.Wait()
+}
+
+func handleShutdown(ctx context.Context, cancel context.CancelCauseFunc, cfg *config.Config, comp *serviceComponents, log logger.Logger) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
 	<-sigCh
-	zapLogger.Info("received shutdown signal, starting graceful shutdown")
+	log.Info("received shutdown signal, starting graceful shutdown")
 
-	cancel()
+	cancel(ErrForcedShutdown)
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Shutdown.Timeout)
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, cfg.Shutdown.Timeout)
 	defer shutdownCancel()
 
-	doneCh := make(chan struct{})
-	go func() {
-		gracefulShutdown(shutdownCtx,
-			func(hookCtx context.Context) error {
-				zapLogger.Info("closing database connection")
-				database.Close()
-				return nil
-			},
-			func(hookCtx context.Context) error {
-				zapLogger.Info("stopping HTTP server")
-				return httpServer.Stop(hookCtx)
-			},
-			func(hookCtx context.Context) error {
-				zapLogger.Info("stopping Kafka consumer")
-				return kafkaConsumer.Stop(hookCtx)
-			},
-		)
-		close(doneCh)
-	}()
+	comp.gracefulShutdown(shutdownCtx,
+		func(hookCtx context.Context) error {
+			log.Info("closing database connection")
+			comp.database.Close()
+			return nil
+		},
+		func(hookCtx context.Context) error {
+			log.Info("stopping HTTP server")
+			return comp.httpServer.Stop(hookCtx)
+		},
+		func(hookCtx context.Context) error {
+			log.Info("stopping Kafka consumer")
+			return comp.kafkaConsumer.Stop(hookCtx)
+		},
+	)
 
-	select {
-	case <-doneCh:
-		zapLogger.Info("shutdown completed successfully")
-	case <-shutdownCtx.Done():
-		if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-			zapLogger.Error("shutdown timeout exceeded")
-			return fmt.Errorf("%w after %v: %w", ErrShutdownTimeout, cfg.Shutdown.Timeout, shutdownCtx.Err())
-		}
-	case <-sigCh:
-		zapLogger.Warn("second interrupt received, forcing immediate exit")
-		return ErrForcedShutdown
-	}
-
-	zapLogger.Info("application stopped")
+	log.Info("shutdown completed successfully")
 	return nil
 }
 
 func NewZapLogger(cfg config.LoggerConfig) logger.Logger {
 	return logger.NewZapLoggerFromConfig(cfg)
 }
+
 func NewDatabase(ctx context.Context, cfg config.DatabaseConfig, log logger.Logger) (*connect.DB, error) {
 	db, err := connect.NewPoolWithMigrations(ctx, cfg, log)
 	if err != nil {
@@ -156,7 +174,7 @@ func NewService(repo ports.OrderRepository, cache ports.Cache, log logger.Logger
 }
 
 func NewKafkaConsumer(cfg config.KafkaConfig, service ports.OrderService, log logger.Logger) ports.KafkaConsumer {
-	return kafkalocal.NewKafkaConsumerWithConfig(cfg, service, log)
+	return consumer.NewKafkaConsumerWithConfig(cfg, service, log)
 }
 
 func NewHTTPServer(cache ports.Cache, repo ports.OrderRepository, log logger.Logger, cfg config.ServerConfig) ports.HTTPServer {

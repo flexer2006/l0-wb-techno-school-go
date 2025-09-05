@@ -45,9 +45,13 @@ func loadEnvironment() error {
 	if err := godotenv.Load(envFile); err != nil {
 		switch {
 		case os.IsNotExist(err):
-			fmt.Fprintf(os.Stderr, "info: %s not found, continuing: %v\n", envFile, err)
+			if _, fprintfErr := fmt.Fprintf(os.Stderr, "info: %s not found, continuing: %v\n", envFile, err); fprintfErr != nil {
+				return fmt.Errorf("failed to write to stderr: %w", fprintfErr)
+			}
 		case os.IsPermission(err):
-			fmt.Fprintf(os.Stderr, "warning: cannot read %s (permission denied), continuing: %v\n", envFile, err)
+			if _, fprintfErr := fmt.Fprintf(os.Stderr, "warning: cannot read %s (permission denied), continuing: %v\n", envFile, err); fprintfErr != nil {
+				return fmt.Errorf("failed to write to stderr: %w", fprintfErr)
+			}
 		default:
 			return fmt.Errorf("failed to load .env file: %w", err)
 		}
