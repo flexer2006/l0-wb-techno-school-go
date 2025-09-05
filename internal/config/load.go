@@ -10,39 +10,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+const envFile = "deploy/.env"
+
 func Load() (*Config, error) {
-	if err := godotenv.Load("deploy/.env"); err != nil {
-		switch {
-		case os.IsNotExist(err):
-			fmt.Fprintf(os.Stderr, "info: deploy/.env not found, continuing: %v\n", err)
-		case os.IsPermission(err):
-			fmt.Fprintf(os.Stderr, "warning: cannot read deploy/.env (permission denied), continuing: %v\n", err)
-		default:
-			return nil, fmt.Errorf("failed to load .env file: %w", err)
-		}
+	if err := loadEnvironment(); err != nil {
+		return nil, fmt.Errorf("failed to load environment: %w", err)
 	}
 
 	viperInstance := viper.New()
 
-	setDefaults(viperInstance)
+	configureViper(viperInstance)
 
-	viperInstance.AutomaticEnv()
-	viperInstance.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	if err := bindEnvVariables(viperInstance); err != nil {
-		return nil, fmt.Errorf("failed to bind environment variables: %w", err)
-	}
-
-	viperInstance.SetConfigName("config")
-	viperInstance.SetConfigType("yaml")
-	viperInstance.AddConfigPath("./configs")
-	viperInstance.AddConfigPath(".")
-
-	if err := viperInstance.ReadInConfig(); err != nil {
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
+	if err := loadConfigFile(viperInstance); err != nil {
+		return nil, fmt.Errorf("failed to load config file: %w", err)
 	}
 
 	var cfg Config
@@ -61,75 +41,148 @@ func MustLoad() *Config {
 	return cfg
 }
 
-func bindEnvVariables(viperInstance *viper.Viper) error {
-	envBindings := map[string]string{
-		"database.host":           "POSTGRES_HOST",
-		"database.port":           "POSTGRES_PORT",
-		"database.user":           "POSTGRES_USER",
-		"database.password":       "POSTGRES_PASSWORD",
-		"database.database":       "POSTGRES_DB",
-		"database.sslmode":        "POSTGRES_SSLMODE",
-		"database.max_open_conns": "POSTGRES_MAX_CONN",
-		"database.max_idle_conns": "POSTGRES_MIN_CONN",
-		"server.host":             "SERVER_HOST",
-		"server.port":             "SERVER_PORT",
-		"kafka.brokers":           "KAFKA_BROKERS",
-	}
-
-	for configKey, envKey := range envBindings {
-		if err := viperInstance.BindEnv(configKey, envKey); err != nil {
-			return fmt.Errorf("failed to bind env variable %s: %w", envKey, err)
+func loadEnvironment() error {
+	if err := godotenv.Load(envFile); err != nil {
+		switch {
+		case os.IsNotExist(err):
+			fmt.Fprintf(os.Stderr, "info: %s not found, continuing: %v\n", envFile, err)
+		case os.IsPermission(err):
+			fmt.Fprintf(os.Stderr, "warning: cannot read %s (permission denied), continuing: %v\n", envFile, err)
+		default:
+			return fmt.Errorf("failed to load .env file: %w", err)
 		}
 	}
-
 	return nil
 }
 
-func setDefaults(viperInstance *viper.Viper) {
-	viperInstance.SetDefault("database.driver", "postgres")
-	viperInstance.SetDefault("database.host", "localhost")
-	viperInstance.SetDefault("database.port", 5432)
-	viperInstance.SetDefault("database.user", "postgres")
-	viperInstance.SetDefault("database.password", "postgres")
-	viperInstance.SetDefault("database.database", "postgres")
-	viperInstance.SetDefault("database.sslmode", "disable")
-	viperInstance.SetDefault("database.migrations_path", "./migrations")
-	viperInstance.SetDefault("database.max_open_conns", 25)
-	viperInstance.SetDefault("database.max_idle_conns", 5)
-	viperInstance.SetDefault("database.conn_max_lifetime", "1h")
-	viperInstance.SetDefault("database.conn_max_idle_time", "25m")
-	viperInstance.SetDefault("database.timeout", "5s")
+func configureViper(vpr *viper.Viper) {
+	setDefaults(vpr)
 
-	viperInstance.SetDefault("server.host", "0.0.0.0")
-	viperInstance.SetDefault("server.port", 8080)
-	viperInstance.SetDefault("server.timeout", "5s")
-	viperInstance.SetDefault("server.idle_timeout", "60s")
-	viperInstance.SetDefault("server.read_timeout", "5s")
-	viperInstance.SetDefault("server.shutdown_timeout", "10s")
+	vpr.AutomaticEnv()
+	vpr.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	viperInstance.SetDefault("kafka.brokers", []string{"localhost:9092"})
-	viperInstance.SetDefault("kafka.topic", "orders")
-	viperInstance.SetDefault("kafka.group_id", "order-service-group")
-	viperInstance.SetDefault("kafka.auto_offset_reset", "earliest")
-	viperInstance.SetDefault("kafka.session_timeout", "30s")
-	viperInstance.SetDefault("kafka.max_wait", "10s")
-	viperInstance.SetDefault("kafka.min_bytes", 10240)
-	viperInstance.SetDefault("kafka.max_bytes", 10485760)
-	viperInstance.SetDefault("kafka.max_retries", 3)
-	viperInstance.SetDefault("kafka.enable_auto_commit", false)
-	viperInstance.SetDefault("kafka.commit_interval", "1s")
+	bindEnvVariables(vpr)
 
-	viperInstance.SetDefault("logger.level", "info")
-	viperInstance.SetDefault("logger.development", false)
-	viperInstance.SetDefault("logger.encoding", "json")
-	viperInstance.SetDefault("logger.output_paths", []string{"stdout"})
-	viperInstance.SetDefault("logger.error_output_paths", []string{"stderr"})
-	viperInstance.SetDefault("logger.encoder.time_key", "ts")
-	viperInstance.SetDefault("logger.encoder.level_key", "level")
-	viperInstance.SetDefault("logger.encoder.message_key", "msg")
-	viperInstance.SetDefault("logger.encoder.caller_key", "caller")
-	viperInstance.SetDefault("logger.encoder.time_encoder", "iso8601")
-	viperInstance.SetDefault("logger.encoder.level_encoder", "lower")
+	vpr.SetConfigName("config")
+	vpr.SetConfigType("yaml")
+	vpr.AddConfigPath("./configs")
+	vpr.AddConfigPath(".")
+}
 
-	viperInstance.SetDefault("shutdown.timeout", "30s")
+func loadConfigFile(vpr *viper.Viper) error {
+	if err := vpr.ReadInConfig(); err != nil {
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if !errors.As(err, &configFileNotFoundError) {
+			return fmt.Errorf("failed to read config file: %w", err)
+		}
+	}
+	return nil
+}
+
+func bindEnvVariables(vpr *viper.Viper) {
+	envBindings := make(map[string]string, 11)
+	envBindings["database.host"] = "POSTGRES_HOST"
+	envBindings["database.port"] = "POSTGRES_PORT"
+	envBindings["database.user"] = "POSTGRES_USER"
+	envBindings["database.password"] = "POSTGRES_PASSWORD"
+	envBindings["database.database"] = "POSTGRES_DB"
+	envBindings["database.sslmode"] = "POSTGRES_SSLMODE"
+	envBindings["database.max_open_conns"] = "POSTGRES_MAX_CONN"
+	envBindings["database.max_idle_conns"] = "POSTGRES_MIN_CONN"
+	envBindings["server.host"] = "SERVER_HOST"
+	envBindings["server.port"] = "SERVER_PORT"
+	envBindings["kafka.brokers"] = "KAFKA_BROKERS"
+
+	for configKey, envKey := range envBindings {
+		_ = vpr.BindEnv(configKey, envKey)
+	}
+}
+
+func setDefaults(vpr *viper.Viper) {
+	setDatabaseDefaults(vpr)
+	setServerDefaults(vpr)
+	setKafkaDefaults(vpr)
+	setLoggerDefaults(vpr)
+	setShutdownDefaults(vpr)
+}
+
+func setDatabaseDefaults(vpr *viper.Viper) {
+	defaults := map[string]interface{}{
+		"database.driver":             "postgres",
+		"database.host":               "localhost",
+		"database.port":               5432,
+		"database.user":               "postgres",
+		"database.password":           "postgres",
+		"database.database":           "postgres",
+		"database.sslmode":            "disable",
+		"database.migrations_path":    "./migrations",
+		"database.max_open_conns":     25,
+		"database.max_idle_conns":     5,
+		"database.conn_max_lifetime":  "1h",
+		"database.conn_max_idle_time": "25m",
+		"database.timeout":            "5s",
+	}
+
+	for key, value := range defaults {
+		vpr.SetDefault(key, value)
+	}
+}
+
+func setServerDefaults(vpr *viper.Viper) {
+	defaults := map[string]interface{}{
+		"server.host":             "0.0.0.0",
+		"server.port":             8080,
+		"server.timeout":          "5s",
+		"server.idle_timeout":     "60s",
+		"server.read_timeout":     "5s",
+		"server.shutdown_timeout": "10s",
+	}
+
+	for key, value := range defaults {
+		vpr.SetDefault(key, value)
+	}
+}
+
+func setKafkaDefaults(vpr *viper.Viper) {
+	defaults := map[string]interface{}{
+		"kafka.brokers":            []string{"localhost:9092"},
+		"kafka.topic":              "orders",
+		"kafka.group_id":           "order-service-group",
+		"kafka.auto_offset_reset":  "earliest",
+		"kafka.session_timeout":    "30s",
+		"kafka.max_wait":           "10s",
+		"kafka.min_bytes":          10240,
+		"kafka.max_bytes":          10485760,
+		"kafka.max_retries":        3,
+		"kafka.enable_auto_commit": false,
+		"kafka.commit_interval":    "1s",
+	}
+
+	for key, value := range defaults {
+		vpr.SetDefault(key, value)
+	}
+}
+
+func setLoggerDefaults(vpr *viper.Viper) {
+	defaults := map[string]interface{}{
+		"logger.level":                 "info",
+		"logger.development":           false,
+		"logger.encoding":              "json",
+		"logger.output_paths":          []string{"stdout"},
+		"logger.error_output_paths":    []string{"stderr"},
+		"logger.encoder.time_key":      "ts",
+		"logger.encoder.level_key":     "level",
+		"logger.encoder.message_key":   "msg",
+		"logger.encoder.caller_key":    "caller",
+		"logger.encoder.time_encoder":  "iso8601",
+		"logger.encoder.level_encoder": "lower",
+	}
+
+	for key, value := range defaults {
+		vpr.SetDefault(key, value)
+	}
+}
+
+func setShutdownDefaults(vpr *viper.Viper) {
+	vpr.SetDefault("shutdown.timeout", "30s")
 }
