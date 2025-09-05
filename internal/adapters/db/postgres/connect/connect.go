@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/adapters/db/postgres/migration"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -90,6 +92,64 @@ func NewPool(ctx context.Context, dsn string, maxConns, minConns int, connMaxLif
 	}
 
 	return &DB{pool: pool}, nil
+}
+
+func NewPoolWithMigrations(ctx context.Context, cfg config.DatabaseConfig, log logger.Logger) (*DB, error) {
+	dsn := BuildDSN(cfg)
+
+	log.Info("connecting to database",
+		"host", cfg.Host,
+		"port", cfg.Port,
+		"database", cfg.Database,
+	)
+
+	database, err := NewPool(
+		ctx,
+		dsn,
+		cfg.MaxOpenConns,
+		cfg.MaxIdleConns,
+		cfg.ConnMaxLifetime,
+		cfg.ConnMaxIdleTime,
+		cfg.Timeout,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+
+	log.Info("database connection established successfully")
+
+	if err := database.Ping(ctx); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
+	}
+
+	if err := runMigrations(dsn, cfg.MigrationsPath, log); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("run migrations: %w", err)
+	}
+
+	log.Info("database and migrations initialized successfully")
+	return database, nil
+}
+
+func runMigrations(dsn, migrationsPath string, log logger.Logger) error {
+	log.Info("starting database migrations", "path", migrationsPath)
+
+	runner, err := migration.NewMigrationRunner(dsn, migrationsPath)
+	if err != nil {
+		return fmt.Errorf("create migration runner: %w", err)
+	}
+	defer func() {
+		if closeErr := runner.Close(); closeErr != nil {
+			log.Error("failed to close migration runner", "error", closeErr)
+		}
+	}()
+
+	if err := runner.Up(); err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+
+	return nil
 }
 
 func (d *DB) Close() {

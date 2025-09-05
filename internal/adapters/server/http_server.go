@@ -6,12 +6,12 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
-	"github.com/flexer2006/l0-wb-techno-school-go/pkg/logger"
 )
 
 type httpServer struct {

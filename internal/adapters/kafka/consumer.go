@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/segmentio/kafka-go"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
-	"github.com/flexer2006/l0-wb-techno-school-go/pkg/logger"
 )
 
 var (
@@ -36,6 +37,33 @@ func NewKafkaConsumer(reader *kafka.Reader, service ports.OrderService, log logg
 		log:     log,
 		started: false,
 	}
+}
+
+func NewKafkaConsumerWithConfig(cfg config.KafkaConfig, service ports.OrderService, log logger.Logger) ports.KafkaConsumer {
+	var startOffset int64
+	switch cfg.AutoOffsetReset {
+	case "earliest":
+		startOffset = kafka.FirstOffset
+	case "latest":
+		startOffset = kafka.LastOffset
+	default:
+		startOffset = kafka.LastOffset
+	}
+
+	readerConfig := kafka.ReaderConfig{
+		Brokers:        cfg.Brokers,
+		Topic:          cfg.Topic,
+		GroupID:        cfg.GroupID,
+		StartOffset:    startOffset,
+		MinBytes:       cfg.MinBytes,
+		MaxBytes:       cfg.MaxBytes,
+		MaxWait:        cfg.MaxWait,
+		SessionTimeout: cfg.SessionTimeout,
+		CommitInterval: cfg.CommitInterval,
+	}
+
+	reader := kafka.NewReader(readerConfig)
+	return NewKafkaConsumer(reader, service, log)
 }
 
 func (c *kafkaConsumer) Start(ctx context.Context) error {

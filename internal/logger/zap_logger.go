@@ -3,16 +3,12 @@ package logger
 import (
 	"context"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 const TraceIDKey = "trace_id"
-
-type ZapLogger struct {
-	Logger  *zap.Logger
-	Sugared *zap.SugaredLogger
-}
 
 type Logger interface {
 	Debug(msg string, fields ...any)
@@ -22,6 +18,11 @@ type Logger interface {
 	Fatal(msg string, fields ...any)
 	WithField(key string, value any) Logger
 	WithContext(ctx context.Context) Logger
+}
+
+type ZapLogger struct {
+	Logger  *zap.Logger
+	Sugared *zap.SugaredLogger
 }
 
 func ParseLevel(level string) zapcore.Level {
@@ -92,4 +93,30 @@ func (z *ZapLogger) WithContext(ctx context.Context) Logger {
 		}
 	}
 	return z
+}
+
+func NewZapLoggerFromConfig(cfg config.LoggerConfig) Logger {
+	zapConfig := zap.Config{
+		Level:       zap.NewAtomicLevelAt(ParseLevel(cfg.Level)),
+		Development: cfg.Development,
+		Encoding:    cfg.Encoding,
+		EncoderConfig: zapcore.EncoderConfig{
+			TimeKey:      cfg.Encoder.TimeKey,
+			LevelKey:     cfg.Encoder.LevelKey,
+			MessageKey:   cfg.Encoder.MessageKey,
+			CallerKey:    cfg.Encoder.CallerKey,
+			EncodeTime:   ParseTimeEncoder(cfg.Encoder.TimeEncoder),
+			EncodeLevel:  ParseLevelEncoder(cfg.Encoder.LevelEncoder),
+			EncodeCaller: zapcore.ShortCallerEncoder,
+		},
+		OutputPaths:      cfg.OutputPaths,
+		ErrorOutputPaths: cfg.ErrorPaths,
+	}
+
+	zapLogger := zap.Must(zapConfig.Build())
+
+	return &ZapLogger{
+		Logger:  zapLogger,
+		Sugared: zapLogger.Sugar(),
+	}
 }

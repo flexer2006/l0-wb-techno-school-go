@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/domain"
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/flexer2006/l0-wb-techno-school-go/internal/ports"
-	"github.com/flexer2006/l0-wb-techno-school-go/pkg/logger"
 )
 
 var (

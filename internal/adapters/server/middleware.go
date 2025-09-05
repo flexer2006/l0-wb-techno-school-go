@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 	"github.com/gofiber/fiber/v3"
-
-	"github.com/flexer2006/l0-wb-techno-school-go/pkg/logger"
 )
 
 func LoggingMiddleware(log logger.Logger) fiber.Handler {

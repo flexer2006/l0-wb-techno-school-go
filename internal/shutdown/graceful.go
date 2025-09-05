@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/flexer2006/l0-wb-techno-school-go/pkg/logger"
+	"github.com/flexer2006/l0-wb-techno-school-go/internal/logger"
 )
 
 func Wait(ctx context.Context, timeout time.Duration, log logger.Logger, hooks ...func(context.Context) error) {
