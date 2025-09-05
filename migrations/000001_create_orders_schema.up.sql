@@ -79,6 +79,6 @@ CREATE INDEX IF NOT EXISTS idx_items_nm_id ON items (nm_id);
 CREATE INDEX IF NOT EXISTS idx_items_chrt_id ON items (chrt_id);
 
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 COMMIT;
