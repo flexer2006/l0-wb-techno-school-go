@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en,ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        input, button { padding: 10px; margin: 5px; }
+        pre { background: #f4f4f4; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Order Lookup</h1>
+    <input type="text" id="orderId" placeholder="Enter Order UID" />
+    <button onclick="fetchOrder()">Get Order</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function fetchOrder() {
+            const orderId = document.getElementById('orderId').value;
+            if (!orderId) {
+                document.getElementById('result').textContent = 'Please enter an Order UID';
+                return;
+            }
+            try {
+                const response = await fetch(`/order/${orderId}`);
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
