@@ -105,7 +105,6 @@ docker compose stop
   - shutdown/            # graceful shutdown helper
 - migrations/            # SQL migrations
 - static/                # static page (index.html)
-- pkg/                   # utilities / reusable code
 ```
 ## Endpoints
 Available endpoints: [docs/http/endpoints.http](docs/http/endpoints.http)
