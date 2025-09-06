@@ -74,7 +74,7 @@ docker compose stop
 ```
 
 ## Architecture and code layout (packages — tree)
-```md
+```
 - cmd/
   - service/             # application entry point
 - configs/               # YAML configuration files (non-critical)
