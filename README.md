@@ -74,6 +74,7 @@ docker compose stop
 ```
 
 ## Architecture and code layout (packages — tree)
+```md
 - cmd/
   - service/             # application entry point
 - configs/               # YAML configuration files (non-critical)
@@ -105,7 +106,7 @@ docker compose stop
 - migrations/            # SQL migrations
 - static/                # static page (index.html)
 - pkg/                   # utilities / reusable code
-
+```
 ## Endpoints
 Available endpoints: [docs/http/endpoints.http](docs/http/endpoints.http)
 - GET /health — health check
